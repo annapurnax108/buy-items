@@ -62,7 +62,7 @@ function doPost(e) {
 
 // rows typed straight into the sheet get an id the first time the app talks to it (onEdit only fires for a bound script)
 function fillIds(sh) {
-  const n = sh.getLastRow() - 1;
+  const n = lastItemRow(sh) - 1;
   if (n < 1) return;
   const rng = sh.getRange(2, 1, n, 2), v = rng.getValues();
   let changed = false;
@@ -70,10 +70,18 @@ function fillIds(sh) {
   if (changed) rng.setValues(v);
 }
 
+// last row of Items that holds an item. sh.getLastRow() can't be used: the checkbox column is pre-filled down the sheet,
+// so it reports row ~1000 and new items would land far below the header
+function lastItemRow(sh) {
+  const v = sh.getRange(1, 1, sh.getMaxRows(), 2).getValues();
+  for (let i = v.length - 1; i >= 1; i--) if (v[i][0] || v[i][1]) return i + 1;
+  return 1;
+}
+
 const fmtDate = (d) => d instanceof Date ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(d || '');
 
 function list(sh) {
-  const n = sh.getLastRow() - 1;
+  const n = lastItemRow(sh) - 1;
   if (n < 1) return [];
   return sh.getRange(2, 1, n, NCOL).getValues()
     .filter(r => r[0] || r[1])
@@ -85,7 +93,7 @@ function list(sh) {
 }
 
 function findRow(sh, id) {
-  const n = sh.getLastRow() - 1;
+  const n = lastItemRow(sh) - 1;
   if (n < 1 || !id) return -1;
   const i = sh.getRange(2, 1, n, 1).getValues().map(r => r[0]).indexOf(id);
   return i < 0 ? -1 : i + 2;
@@ -98,10 +106,13 @@ function upsert(sh, t) {
   const price = t.price === '' || t.price == null ? '' : Number(t.price);
   const vals = [t.id, t.item, t.store, t.category || '', t.type || 'staple', Number(t.qty) || 1, t.unit || '', price, !!t.need,
     stats[0], stats[1], stats[2], t.notes || '', new Date().toISOString()];
-  if (row < 0) sh.appendRow(vals); else sh.getRange(row, 1, 1, NCOL).setValues([vals]);
-  const r = row < 0 ? sh.getLastRow() : row;
+  const r = row < 0 ? lastItemRow(sh) + 1 : row; // new items go in the first empty row under the last item
+  if (r > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+  sh.getRange(r, 1, 1, NCOL).setValues([vals]);
   sh.getRange(r, 10).setNumberFormat('@').setValue(stats[0]);
   if (row < 0) {
+    sh.getRange(r, 3).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(STORES, true).build());
+    sh.getRange(r, 5).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(TYPES, true).build());
     sh.getRange(r, 9).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
     sh.getRange(r, 8).setNumberFormat('$0.00');
   }
@@ -155,5 +166,15 @@ function recompute(sh, lg, row, logRows) {
 function recomputeAll() {
   const book = ss(), sh = book.getSheetByName(ITEMS), lg = book.getSheetByName(LOG);
   const n = lg.getLastRow() - 1, logRows = n > 0 ? lg.getRange(2, 1, n, 3).getValues() : [];
-  for (let r = 2; r <= sh.getLastRow(); r++) if (sh.getRange(r, 1).getValue()) recompute(sh, lg, r, logRows);
+  for (let r = 2; r <= lastItemRow(sh); r++) if (sh.getRange(r, 1).getValue()) recompute(sh, lg, r, logRows);
+}
+
+// one-time fix for items that ended up far below the header: delete the empty rows between the header and the first item
+function compactItems() {
+  const sh = ss().getSheetByName(ITEMS);
+  const v = sh.getRange(1, 1, sh.getMaxRows(), 2).getValues();
+  let first = -1;
+  for (let i = 1; i < v.length; i++) if (v[i][0] || v[i][1]) { first = i + 1; break; }
+  if (first > 2) sh.deleteRows(2, first - 2);
+  Logger.log('first item row was ' + first + '; now ' + (first > 2 ? 2 : first));
 }
