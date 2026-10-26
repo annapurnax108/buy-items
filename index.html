@@ -30,6 +30,10 @@
   form#add { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:14px; }
   form#add > input { border-radius:999px; padding:12px 16px; border:2px solid var(--acc); }
   #more[hidden] { display:none; }
+  #sugg { list-style:none; margin:-2px 0 0; padding:0; display:grid; gap:6px; } #sugg[hidden] { display:none; }
+  #sugg li { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc); border-radius:12px; padding:8px 12px; cursor:pointer; }
+  #sugg .t { flex:1; font-weight:600; word-break:break-word; } #sugg small { color:var(--mut); } #sugg .amt { font-size:14px; }
+  #sugg .badge { font-size:11px; font-weight:700; color:#fff; background:var(--acc); border-radius:999px; padding:1px 8px; }
   #addClose { border:2px solid var(--bad); color:var(--bad); font-weight:600; }
   .tabs { display:flex; gap:8px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
   .tabs button { flex:0 0 auto; font-size:14px; padding:6px 12px; border-radius:999px; border:2px solid var(--sc,var(--acc)); color:var(--sc,var(--acc)); font-weight:600; background:transparent; }
@@ -73,6 +77,7 @@
   <div id="status"></div>
   <form id="add">
     <input name="item" placeholder="New item…" autocomplete="off" required>
+    <ul id="sugg" hidden></ul>
     <div id="more" class="edit" hidden></div>
   </form>
   <div class="tabs" id="tabs"></div>
@@ -227,18 +232,48 @@ function render() {
 
 // the add form's extra fields open when the item box is tapped; the store defaults to the selected tab
 const addForm = $('#add'), itemInput = addForm.querySelector('[name=item]'); // not form.elements.item: that is the collection's item() method
-function resetMore() { $('#more').innerHTML = fieldsHtml(norm({ item: '', store: store === 'All' ? STORES[0] : store, price: '' }), false)
-  + '<div class="btns"><button type="button" id="addClose">✕ close</button><button class="primary">add</button></div>'; }
+// picked = id of an existing item chosen from the type-ahead, so Add updates it instead of creating a duplicate
+let picked = null;
+function resetMore(it) {
+  picked = it ? it.id : null;
+  $('#more').innerHTML = fieldsHtml(it || norm({ item: '', store: store === 'All' ? STORES[0] : store, price: '' }), false)
+    + '<div class="btns"><button type="button" id="addClose">✕ close</button><button class="primary"></button></div>';
+  setAddBtn();
+}
+const setAddBtn = () => { const p = items.find(x => x.id === picked); addForm.querySelector('button.primary').textContent = !p ? 'add' : p.need ? 'save changes' : 'add to list'; };
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+// existing items whose name contains the typed text: this store first, then prefix matches, then A-Z
+function matches(q) {
+  q = q.trim().toLowerCase(); if (!q) return [];
+  return items.filter(t => t.item.toLowerCase().includes(q))
+    .sort((a, b) => (store !== 'All' && (b.store === store) - (a.store === store)) || (b.item.toLowerCase().startsWith(q) - a.item.toLowerCase().startsWith(q)) || a.item.localeCompare(b.item)).slice(0, 6);
+}
+function showSugg() {
+  const ms = matches(itemInput.value);
+  $('#sugg').hidden = !ms.length;
+  $('#sugg').innerHTML = ms.map(t => `<li data-id="${t.id}" style="--sc:${colorOf(t.store)}"><span class="t">${esc(t.item)}${t.need ? ' <span class="badge">on list</span>' : ''}<br><small>${esc(t.store)}${t.category ? ' · ' + esc(t.category) : ''}</small></span><span class="amt">${t.price === '' ? '—' : money(t.price)}</span></li>`).join('');
+}
 let skipOpen = false;
 const focusItem = () => { skipOpen = true; itemInput.focus(); skipOpen = false; };
 ['focus', 'click'].forEach(ev => itemInput.addEventListener(ev, () => { if (!skipOpen) $('#more').hidden = false; }));
 addForm.addEventListener('click', e => { if (e.target.id === 'addClose') $('#more').hidden = true; });
-addForm.addEventListener('keydown', e => { if (e.key === 'Escape') $('#more').hidden = true; });
+addForm.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#more').hidden = true; $('#sugg').hidden = true; } });
+itemInput.addEventListener('input', () => { const p = items.find(x => x.id === picked); if (p && !sameName(p.item, itemInput.value)) { picked = null; setAddBtn(); } showSugg(); });
+itemInput.addEventListener('focus', showSugg);
+itemInput.addEventListener('blur', () => { $('#sugg').hidden = true; });
+// pointerdown (not click) so the input keeps focus and the list isn't hidden by blur before the tap lands
+$('#sugg').addEventListener('pointerdown', e => {
+  const li = e.target.closest('li'); if (!li) return; e.preventDefault();
+  const it = items.find(x => x.id === li.dataset.id); if (!it) return;
+  itemInput.value = it.item; resetMore(it); $('#sugg').hidden = true; $('#more').hidden = false; // fill the form with its saved details
+});
 addForm.addEventListener('submit', e => {
   e.preventDefault();
   const f = read(addForm);
-  upsert(fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // a new item goes straight on the list
-  addForm.reset(); resetMore(); $('#more').hidden = true; focusItem();
+  // a typed name that already exists in that store is the same item, not a new one
+  const old = items.find(x => x.id === picked) || items.find(x => x.store === f.store && sameName(x.item, f.item));
+  upsert(old ? { ...fromFields(f, old), need: true } : fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // goes straight on the list
+  addForm.reset(); resetMore(); $('#sugg').hidden = true; $('#more').hidden = true; focusItem();
 });
 [$('#tabs'), $('#by')].forEach(el => el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { store = store === b.dataset.s && el.id === 'by' ? 'All' : b.dataset.s; editing = null; resetMore(); render(); } })); // a tapped total toggles its store
 $('#filters').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { filter = b.dataset.f; editing = null; render(); } });
