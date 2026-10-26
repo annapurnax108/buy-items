@@ -6,14 +6,14 @@
 <title>Buy Items</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
-<meta name="theme-color" content="#1b7f3b">
+<meta name="theme-color" content="#0b3d1b">
 <style>
-  :root { --bg:#f1f7f2; --fg:#1b2a1f; --mut:#5d6f62; --line:#d6e4d9; --acc:#1b7f3b; --acc2:#0f5c28; --card:#fff; --bad:#d93025; --due:#e8710a; --field:#fff; --fline:#7d9a85; --panel:#e6f2e9; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0f1511; --fg:#e4efe6; --mut:#93a89a; --line:#2b3a2f; --acc:#5fc57f; --acc2:#2e8f4d; --card:#18211b; --bad:#f28b82; --due:#fcad70; --field:#0c120e; --fline:#6f8c77; --panel:#223026; } }
+  :root { --bg:#f1f7f2; --fg:#1b2a1f; --mut:#5d6f62; --line:#d6e4d9; --acc:#1b7f3b; --acc2:#0f5c28; --card:#fff; --bad:#d93025; --due:#e8710a; --field:#fff; --fline:#7d9a85; --panel:#e6f2e9; --hero1:#0b3d1b; --hero2:#126b2f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1511; --fg:#e4efe6; --mut:#93a89a; --line:#2b3a2f; --acc:#5fc57f; --acc2:#2e8f4d; --card:#18211b; --bad:#f28b82; --due:#fcad70; --field:#0c120e; --fline:#6f8c77; --panel:#223026; --hero1:#0b2616; --hero2:#17482a; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 ui-rounded,"SF Pro Rounded",system-ui,sans-serif; }
   main { max-width:720px; margin:0 auto; padding:0 16px 96px; }
-  #hero { position:sticky; top:0; z-index:5; background:linear-gradient(135deg,var(--acc2),var(--acc)); color:#fff; padding:12px 16px 14px; margin:0 -16px 14px; border-radius:0 0 22px 22px; box-shadow:0 4px 14px rgba(0,0,0,.18); }
+  #hero { position:sticky; top:0; z-index:5; background:linear-gradient(135deg,var(--hero1),var(--hero2)); color:#fff; padding:12px 16px 14px; margin:0 -16px 14px; border-radius:0 0 22px 22px; box-shadow:0 4px 14px rgba(0,0,0,.18); }
   #hero .top { display:flex; align-items:center; gap:8px; max-width:688px; margin:0 auto; }
   #hero h1 { font-size:20px; margin:0; flex:1; letter-spacing:.2px; }
   #hero button { background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:50%; width:36px; height:36px; padding:0; }
