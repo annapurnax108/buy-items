@@ -1,10 +1,10 @@
 // Paste into Extensions > Apps Script of your Google Sheet. Run setup() once, then Deploy > Web app.
 const ITEMS = 'Items', LOG = 'Log';
-const I_HEAD = ['id', 'item', 'store', 'category', 'type', 'qty', 'unit', 'price', 'need', 'last_bought', 'times_bought', 'avg_days', 'notes', 'updated_at'];
+const I_HEAD = ['id', 'item', 'store', 'category', 'type', 'qty', 'unit', 'price', 'need', 'last_bought', 'times_bought', 'avg_days', 'notes', 'updated_at', 'one_time'];
 const L_HEAD = ['id', 'date', 'item_id', 'item', 'store', 'qty', 'price', 'total'];
 const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store', 'Other']; // keep in sync with STORES in index.html
 const TYPES = ['staple', 'occasional'];
-const NCOL = I_HEAD.length;
+const NCOL = I_HEAD.length, UPDATED_COL = 14; // one_time (col 15) is last, so updated_at is no longer the final column
 const SHEET_ID = '1ZjIlfJmwzSMag_B1yx41pSzfXrFriOAma3RdotcVT14'; // the buy-list spreadsheet (this script need not be bound to it)
 const ss = () => SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
 
@@ -16,6 +16,7 @@ function setup() {
   it.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(STORES, true).build());
   it.getRange('E2:E').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(TYPES, true).build());
   it.getRange('I2:I').setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  it.getRange('O2:O').setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build()); // one_time: removed from Items once bought
   it.getRange('H2:H').setNumberFormat('$0.00');
   it.getRange('J2:J').setNumberFormat('@'); // last_bought stays plain yyyy-mm-dd text
   const lg = book.getSheetByName(LOG) || book.insertSheet(LOG);
@@ -38,7 +39,7 @@ function onEdit(e) {
   if (sh.getName() !== ITEMS || e.range.getRow() < 2 || e.range.getColumn() > 9) return;
   const r = e.range.getRow();
   if (!sh.getRange(r, 1).getValue() && sh.getRange(r, 2).getValue()) sh.getRange(r, 1).setValue(Utilities.getUuid());
-  sh.getRange(r, NCOL).setValue(new Date().toISOString());
+  sh.getRange(r, UPDATED_COL).setValue(new Date().toISOString());
 }
 
 function doPost(e) {
@@ -88,7 +89,8 @@ function list(sh) {
     .map(r => ({
       id: r[0] || '', item: r[1], store: r[2], category: r[3], type: r[4] || 'staple', qty: r[5] || 1, unit: r[6],
       price: r[7], need: r[8] === true || String(r[8]).toLowerCase() === 'true',
-      last_bought: fmtDate(r[9]), times_bought: Number(r[10]) || 0, avg_days: r[11], notes: r[12], updated_at: String(r[13] || '')
+      last_bought: fmtDate(r[9]), times_bought: Number(r[10]) || 0, avg_days: r[11], notes: r[12], updated_at: String(r[13] || ''),
+      one_time: r[14] === true || String(r[14]).toLowerCase() === 'true'
     }));
 }
 
@@ -105,7 +107,7 @@ function upsert(sh, t) {
   const stats = row < 0 ? ['', '', ''] : sh.getRange(row, 10, 1, 3).getValues()[0];
   const price = t.price === '' || t.price == null ? '' : Number(t.price);
   const vals = [t.id, t.item, t.store, t.category || '', t.type || 'staple', Number(t.qty) || 1, t.unit || '', price, !!t.need,
-    stats[0], stats[1], stats[2], t.notes || '', new Date().toISOString()];
+    stats[0], stats[1], stats[2], t.notes || '', new Date().toISOString(), !!t.one_time];
   const r = row < 0 ? lastItemRow(sh) + 1 : row; // new items go in the first empty row under the last item
   if (r > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
   sh.getRange(r, 1, 1, NCOL).setValues([vals]);
@@ -114,6 +116,7 @@ function upsert(sh, t) {
     sh.getRange(r, 3).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(STORES, true).build());
     sh.getRange(r, 5).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(TYPES, true).build());
     sh.getRange(r, 9).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+    sh.getRange(r, 15).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
     sh.getRange(r, 8).setNumberFormat('$0.00');
   }
 }
@@ -135,7 +138,10 @@ function buy(sh, lg, q) {
     lg.getRange(r, 2).setNumberFormat('@').setValue(q.date);
     lg.getRange(r, 7, 1, 2).setNumberFormat('$0.00');
   }
-  if (row > 0) { sh.getRange(row, 9).setValue(false); recompute(sh, lg, row); }
+  if (row < 0) return;
+  // a one-off item leaves the catalog once bought (the Log row keeps its name, price and date)
+  if (sh.getRange(row, 15).getValue() === true) { sh.deleteRow(row); return; }
+  sh.getRange(row, 9).setValue(false); recompute(sh, lg, row);
 }
 
 function unbuy(sh, lg, q) {

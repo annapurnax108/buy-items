@@ -30,6 +30,7 @@
   form#add { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:14px; }
   form#add > input { border-radius:999px; padding:12px 16px; border:2px solid var(--acc); }
   #more[hidden] { display:none; }
+  label.keep { display:flex; align-items:center; gap:10px; font-size:15px; } label.keep small { color:var(--mut); }
   #sugg { list-style:none; margin:-2px 0 0; padding:0; display:grid; gap:6px; } #sugg[hidden] { display:none; }
   #sugg li { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc); border-radius:12px; padding:8px 12px; cursor:pointer; }
   #sugg .t { flex:1; font-weight:600; word-break:break-word; } #sugg small { color:var(--mut); } #sugg .amt { font-size:14px; }
@@ -105,7 +106,7 @@ const TYPES = ['staple', 'occasional'];
 const FILTERS = ['List', 'Due', 'Items']; // List = on the list, Due = staples we're probably out of, Items = everything
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-const norm = t => ({ category: '', unit: '', notes: '', last_bought: '', times_bought: 0, avg_days: '', ...t, type: t.type || 'staple', qty: Number(t.qty) || 1, need: t.need === true || String(t.need).toLowerCase() === 'true' });
+const norm = t => ({ category: '', unit: '', notes: '', last_bought: '', times_bought: 0, avg_days: '', ...t, type: t.type || 'staple', qty: Number(t.qty) || 1, need: t.need === true || String(t.need).toLowerCase() === 'true', one_time: t.one_time === true || String(t.one_time).toLowerCase() === 'true' });
 // storage keys are prefixed because the to-do app is served from the same github.io origin
 let cfg = load('buy_cfg', {}), items = load('buy_items', []).map(norm), queue = load('buy_queue', []);
 let store = 'All', filter = 'List', query = '', editing = null, syncing = false, lastBuy = null, toastTimer;
@@ -156,7 +157,8 @@ function buy(t) {
   const log_id = uuid(), date = today();
   lastBuy = { prev: t, log_id };
   const times = t.times_bought + 1;
-  items[items.indexOf(t)] = { ...t, need: false, last_bought: date, times_bought: times };
+  if (t.one_time) items = items.filter(x => x.id !== t.id); // one-offs leave the catalog (the sheet drops the row, the Log keeps the purchase)
+  else items[items.indexOf(t)] = { ...t, need: false, last_bought: date, times_bought: times };
   save('buy_items', items);
   toast(`Bought ${t.item}`);
   send({ action: 'buy', id: t.id, log_id, date, item: t.item, store: t.store, qty: t.qty, price: t.price });
@@ -164,15 +166,17 @@ function buy(t) {
 function undoBuy() {
   if (!lastBuy) return;
   const { prev, log_id } = lastBuy; lastBuy = null; $('#toast').hidden = true;
-  items[items.findIndex(x => x.id === prev.id)] = { ...prev, need: true };
+  const i = items.findIndex(x => x.id === prev.id);
+  if (i < 0) items.unshift({ ...prev, need: true }); else items[i] = { ...prev, need: true };
   save('buy_items', items); send({ action: 'unbuy', id: prev.id, log_id });
+  if (prev.one_time) send({ action: 'upsert', item: { ...prev, need: true } }); // the sheet already dropped its row: put it back
 }
 function toast(msg) {
   $('#toast span').textContent = msg; $('#toast').hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; lastBuy = null; }, 6000);
 }
 
-const freqText = t => [t.type,
+const freqText = t => [t.one_time ? 'one-time' : t.type,
   t.avg_days ? `every ~${t.avg_days}d` : '',
   t.times_bought ? `${t.times_bought}× bought` : 'never bought',
   t.last_bought ? (daysAgo(t.last_bought) === 0 ? 'last today' : `last ${daysAgo(t.last_bought)}d ago`) : ''].filter(Boolean).join(' · ');
@@ -185,10 +189,11 @@ function fieldsHtml(t, withName) {
     <input name="unit" value="${esc(t.unit)}" placeholder="unit (lb, pack)">
     <input name="price" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(t.price)}" placeholder="price $"></div>
     <input name="category" list="cats" value="${esc(t.category)}" placeholder="Category (produce, dairy…)">
+    <label class="keep"><input type="checkbox" name="keep" ${t.one_time ? '' : 'checked'}> Remember for next time <small>(off = one-off, removed once bought)</small></label>
     <textarea name="notes" rows="2" placeholder="Notes">${esc(t.notes)}</textarea>`;
 }
-const read = root => Object.fromEntries([...root.querySelectorAll('[name]')].map(e => [e.name, e.value]));
-const fromFields = (f, base) => norm({ ...base, item: f.item.trim() || base.item, store: f.store, type: f.type, qty: f.qty, unit: f.unit.trim(), price: f.price === '' ? '' : +f.price, category: f.category.trim(), notes: f.notes });
+const read = root => Object.fromEntries([...root.querySelectorAll('[name]')].map(e => [e.name, e.type === 'checkbox' ? e.checked : e.value]));
+const fromFields = (f, base) => norm({ ...base, item: f.item.trim() || base.item, store: f.store, type: f.type, qty: f.qty, unit: f.unit.trim(), price: f.price === '' ? '' : +f.price, category: f.category.trim(), notes: f.notes, one_time: !f.keep });
 
 function render() {
   const need = items.filter(t => t.need);
@@ -272,7 +277,8 @@ addForm.addEventListener('submit', e => {
   const f = read(addForm);
   // a typed name that already exists in that store is the same item, not a new one
   const old = items.find(x => x.id === picked) || items.find(x => x.store === f.store && sameName(x.item, f.item));
-  upsert(old ? { ...fromFields(f, old), need: true } : fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // goes straight on the list
+  upsert(old ? { ...fromFields(f, old), need: true, one_time: picked ? !f.keep : old.one_time } : // typing an existing name without picking it leaves that item's setting alone
+    fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // goes straight on the list
   addForm.reset(); resetMore(); $('#sugg').hidden = true; $('#more').hidden = true; focusItem();
 });
 [$('#tabs'), $('#by')].forEach(el => el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { store = store === b.dataset.s && el.id === 'by' ? 'All' : b.dataset.s; editing = null; resetMore(); render(); } })); // a tapped total toggles its store
