@@ -46,7 +46,7 @@
   .filters button.on { background:var(--card); color:var(--fg); box-shadow:0 1px 3px rgba(0,0,0,.2); }
   .cat { color:var(--mut); font-size:12px; font-weight:700; margin:14px 0 6px 4px; letter-spacing:.08em; }
   .item { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc,var(--acc)); border-radius:14px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
-  .item.editing { border-left:1px solid var(--line); --sc:var(--acc); } /* no store-colour stripe while the details are open */
+  .item.editing { border-left:1px solid var(--line); } /* no store-colour stripe on the card itself while the details are open; the panel inside carries the colour */
   .row { display:flex; align-items:center; gap:12px; }
   .row .t { flex:1; word-break:break-word; font-weight:600; }
   .amt { font-size:15px; font-weight:700; white-space:nowrap; text-align:right; } .amt small { display:block; font-weight:600; font-size:11px; color:var(--sc,var(--mut)); }
@@ -54,10 +54,11 @@
   .notes { color:var(--mut); font-size:14px; margin:6px 0 0 36px; white-space:pre-wrap; }
   .pill { font-size:13px; padding:4px 10px; white-space:nowrap; border-radius:999px; } .pill.on { color:#fff; background:var(--acc); border-color:var(--acc); }
   .edit > *, .edit .two > *, .three > * { min-width:0; max-width:100%; }
-  .edit { display:grid; gap:10px; margin-top:10px; padding:12px; border-radius:12px; background:var(--panel); border:2px solid var(--acc); --sc:var(--acc); }
+  .edit { display:grid; gap:10px; margin-top:10px; padding:12px; border-radius:12px; background:color-mix(in srgb, var(--sc, var(--acc)) 14%, var(--card)); border:2px solid var(--sc, var(--acc)); }
   .edit input, .edit select, .edit textarea { background:var(--field); border:2px solid var(--fline); font-size:16px; }
   .f { display:grid; gap:3px; font-size:12px; font-weight:700; color:var(--mut); letter-spacing:.03em; text-transform:uppercase; } .f > * { text-transform:none; font-weight:400; color:var(--fg); }
   #more.edit { margin-top:0; }
+  .edit :is(input, select, textarea):focus { border-color:var(--sc, var(--acc)); box-shadow:0 0 0 3px color-mix(in srgb, var(--sc, var(--acc)) 45%, transparent); }
   .edit select, .edit input, .edit textarea { width:100%; }
   .edit .two { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
   .three { display:grid; grid-template-columns:5em 1fr 1fr; gap:8px; }
@@ -227,7 +228,7 @@ function render() {
     const ed = editing === t.id, due = isDue(t);
     const lead = onList ? `<input type="checkbox" data-a="buy" title="Bought">`
       : `<button class="pill ${t.need ? 'on' : ''}" data-a="list">${t.need ? '✓ on list' : '+ list'}</button>`;
-    return head + `<div class="item${ed ? ' editing' : ''}" data-id="${t.id}"${ed ? '' : ` style="--sc:${colorOf(t.store)}"`}><div class="row">${lead}
+    return head + `<div class="item${ed ? ' editing' : ''}" data-id="${t.id}" style="--sc:${colorOf(t.store)}"><div class="row">${lead}
       <span class="t" data-a="edit">${t.qty > 1 ? t.qty + '× ' : ''}${esc(t.item)}${t.unit ? ` <small>(${esc(t.unit)})</small>` : ''}</span>
       <span class="amt">${t.price === '' ? '—' : money(lineTotal(t))}${store === 'All' ? `<small>${esc(t.store)}</small>` : ''}</span></div>
       <div class="sub">${due ? '<span class="due">due · </span>' : ''}${esc(freqText(t))}</div>
@@ -244,11 +245,13 @@ function render() {
 const addForm = $('#add'), itemInput = addForm.querySelector('[name=item]'); // not form.elements.item: that is the collection's item() method
 // picked = id of an existing item chosen from the type-ahead, so Add updates it instead of creating a duplicate
 let picked = null;
+const tintPanel = el => { const p = el.closest('.edit'), s = p && p.querySelector('[name=store]'); if (p && s) p.style.setProperty('--sc', colorOf(s.value)); };
+document.addEventListener('change', e => { if (e.target.name === 'store') tintPanel(e.target); });
 function resetMore(it) {
   picked = it ? it.id : null;
   $('#more').innerHTML = fieldsHtml(it || norm({ item: '', store: store === 'All' ? STORES[0] : store, price: '' }), false)
     + '<div class="btns"><button type="button" id="addClose">✕ close</button><button class="primary"></button></div>';
-  setAddBtn();
+  setAddBtn(); tintPanel($('#more').firstElementChild || $('#more'));
 }
 const setAddBtn = () => { const p = items.find(x => x.id === picked); addForm.querySelector('button.primary').textContent = !p ? 'add' : p.need ? 'save changes' : 'add to list'; };
 const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
