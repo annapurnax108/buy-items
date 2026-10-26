@@ -20,6 +20,9 @@
   #hero button.on { background:#fff; color:var(--acc2); }
   #hero .tot { max-width:688px; margin:6px auto 0; display:flex; align-items:baseline; gap:10px; }
   #hero .est { font-size:34px; font-weight:800; letter-spacing:-.5px; } #hero .n { opacity:.85; font-size:14px; }
+  #hero .by { max-width:688px; margin:8px auto 0; display:flex; gap:6px; overflow-x:auto; } #hero .by:empty { display:none; }
+  #hero .by button { flex:0 0 auto; width:auto; height:auto; border-radius:999px; padding:3px 10px 3px 8px; font-size:13px; font-weight:600; background:rgba(255,255,255,.16); display:flex; align-items:center; gap:6px; }
+  #hero .by button.on { background:#fff; color:var(--acc2); } #hero .by i { width:10px; height:10px; border-radius:50%; background:var(--sc); border:1.5px solid #fff; }
   #searchRow { display:flex; gap:8px; margin-bottom:12px; } #searchRow[hidden] { display:none; } #q { flex:1; min-width:0; }
   button, select, input, textarea { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px 10px; }
   button { cursor:pointer; } button.primary { background:var(--acc); color:#fff; border-color:var(--acc); font-weight:600; }
@@ -43,7 +46,6 @@
   .sub { color:var(--mut); font-size:12px; margin:4px 0 0 36px; } .sub .due { color:var(--due); font-weight:700; }
   .notes { color:var(--mut); font-size:14px; margin:6px 0 0 36px; white-space:pre-wrap; }
   .pill { font-size:13px; padding:4px 10px; white-space:nowrap; border-radius:999px; } .pill.on { color:#fff; background:var(--acc); border-color:var(--acc); }
-  .sum { display:flex; justify-content:space-between; font-size:14px; padding:6px 10px; margin-bottom:4px; border-radius:10px; background:var(--card); border-left:6px solid var(--sc); } .sum b { font-weight:700; }
   .edit > *, .edit .two > *, .three > * { min-width:0; max-width:100%; }
   .edit { display:grid; gap:8px; margin-top:8px; }
   .edit select, .edit input, .edit textarea { width:100%; }
@@ -65,6 +67,7 @@
   <div id="hero">
     <div class="top"><h1>🛒 Buy Items</h1><button id="searchBtn" title="Search" aria-label="Search">🔍</button><button id="refresh" title="Sync now">⟳</button><button id="cfg" title="Settings">⚙</button></div>
     <div class="tot"><span class="est"></span><span class="n"></span></div>
+    <div class="by" id="by"></div>
   </div>
   <div id="searchRow" hidden><input id="q" type="search" placeholder="search all items…" autocomplete="off"><button id="qx" aria-label="Close search">✕</button></div>
   <div id="status"></div>
@@ -90,8 +93,8 @@
 
 <script>
 const $ = s => document.querySelector(s);
-const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store']; // keep in sync with STORES in Code.gs
-const COLORS = { 'Costco': '#1565c0', 'HMart': '#c62828', "Trader Joe's": '#e65100', 'NPL/In-store': '#6a1b9a' }; // per-store accent
+const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store', 'Other']; // 'Other' = a store we still have to pick // keep in sync with STORES in Code.gs
+const COLORS = { 'Costco': '#1565c0', 'HMart': '#c62828', "Trader Joe's": '#e65100', 'NPL/In-store': '#6a1b9a', 'Other': '#546e7a' }; // per-store accent
 const colorOf = st => COLORS[st] || '#1b7f3b';
 const TYPES = ['staple', 'occasional'];
 const FILTERS = ['List', 'Due', 'Items']; // List = on the list, Due = staples we're probably out of, Items = everything
@@ -200,11 +203,9 @@ function render() {
   $('#hero .est').textContent = money(total);
   $('#hero .n').textContent = `est. bill · ${mine.length} item${mine.length === 1 ? '' : 's'}${mine.some(t => t.price === '') ? ' · some unpriced' : ''}`;
 
+  // estimated bill per store, always visible under the banner; tap one to jump to that store
+  $('#by').innerHTML = STORES.filter(s => count(s)).map(s => `<button data-s="${esc(s)}" style="--sc:${colorOf(s)}" class="${s === store ? 'on' : ''}"><i></i>${esc(s)} ${money(need.filter(t => t.store === s).reduce((a, t) => a + lineTotal(t), 0))}</button>`).join('');
   let html = '';
-  if (onList && store === 'All') { // per-store breakdown
-    html += STORES.filter(s => count(s)).map(s => { const xs = need.filter(t => t.store === s);
-      return `<div class="sum" style="--sc:${colorOf(s)}"><span>${esc(s)} · ${xs.length}</span><b>${money(xs.reduce((a, t) => a + lineTotal(t), 0))}</b></div>`; }).join('');
-  }
   let cat = null;
   html += shown.map(t => {
     const head = (t.category || '') !== cat ? `<div class="cat">${esc((cat = t.category || '') || 'other').toUpperCase()}</div>` : '';
@@ -239,7 +240,7 @@ addForm.addEventListener('submit', e => {
   upsert(fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // a new item goes straight on the list
   addForm.reset(); resetMore(); $('#more').hidden = true; focusItem();
 });
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { store = b.dataset.s; editing = null; resetMore(); render(); } });
+[$('#tabs'), $('#by')].forEach(el => el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { store = store === b.dataset.s && el.id === 'by' ? 'All' : b.dataset.s; editing = null; resetMore(); render(); } })); // a tapped total toggles its store
 $('#filters').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { filter = b.dataset.f; editing = null; render(); } });
 $('#list').addEventListener('click', e => {
   const a = e.target.closest('[data-a]')?.dataset.a, el = e.target.closest('.item'); if (!a || !el) return;

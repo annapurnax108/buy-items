@@ -2,7 +2,7 @@
 const ITEMS = 'Items', LOG = 'Log';
 const I_HEAD = ['id', 'item', 'store', 'category', 'type', 'qty', 'unit', 'price', 'need', 'last_bought', 'times_bought', 'avg_days', 'notes', 'updated_at'];
 const L_HEAD = ['id', 'date', 'item_id', 'item', 'store', 'qty', 'price', 'total'];
-const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store']; // keep in sync with STORES in index.html
+const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store', 'Other']; // keep in sync with STORES in index.html
 const TYPES = ['staple', 'occasional'];
 const NCOL = I_HEAD.length;
 const SHEET_ID = '1ZjIlfJmwzSMag_B1yx41pSzfXrFriOAma3RdotcVT14'; // the buy-list spreadsheet (this script need not be bound to it)
