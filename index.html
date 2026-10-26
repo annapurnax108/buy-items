@@ -259,7 +259,7 @@ const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 function matches(q) {
   q = q.trim().toLowerCase(); if (!q) return [];
   return items.filter(t => t.item.toLowerCase().includes(q))
-    .sort((a, b) => (store !== 'All' && (b.store === store) - (a.store === store)) || (b.item.toLowerCase().startsWith(q) - a.item.toLowerCase().startsWith(q)) || a.item.localeCompare(b.item)).slice(0, 4);
+    .sort((a, b) => (store !== 'All' && (b.store === store) - (a.store === store)) || (b.item.toLowerCase().startsWith(q) - a.item.toLowerCase().startsWith(q)) || a.item.localeCompare(b.item)).slice(0, 8);
 }
 function showSugg() {
   const ms = matches(itemInput.value);
