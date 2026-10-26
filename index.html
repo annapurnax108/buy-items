@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buy Items</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#1b7f3b">
+<style>
+  :root { --bg:#f1f7f2; --fg:#1b2a1f; --mut:#5d6f62; --line:#d6e4d9; --acc:#1b7f3b; --acc2:#0f5c28; --card:#fff; --bad:#d93025; --due:#e8710a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1511; --fg:#e4efe6; --mut:#93a89a; --line:#2b3a2f; --acc:#5fc57f; --acc2:#2e8f4d; --card:#18211b; --bad:#f28b82; --due:#fcad70; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 ui-rounded,"SF Pro Rounded",system-ui,sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:0 16px 96px; }
+  #hero { position:sticky; top:0; z-index:5; background:linear-gradient(135deg,var(--acc2),var(--acc)); color:#fff; padding:12px 16px 14px; margin:0 -16px 14px; border-radius:0 0 22px 22px; box-shadow:0 4px 14px rgba(0,0,0,.18); }
+  #hero .top { display:flex; align-items:center; gap:8px; max-width:688px; margin:0 auto; }
+  #hero h1 { font-size:20px; margin:0; flex:1; letter-spacing:.2px; }
+  #hero button { background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:50%; width:36px; height:36px; padding:0; }
+  #hero button.on { background:#fff; color:var(--acc2); }
+  #hero .tot { max-width:688px; margin:6px auto 0; display:flex; align-items:baseline; gap:10px; }
+  #hero .est { font-size:34px; font-weight:800; letter-spacing:-.5px; } #hero .n { opacity:.85; font-size:14px; }
+  #searchRow { display:flex; gap:8px; margin-bottom:12px; } #searchRow[hidden] { display:none; } #q { flex:1; min-width:0; }
+  button, select, input, textarea { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px 10px; }
+  button { cursor:pointer; } button.primary { background:var(--acc); color:#fff; border-color:var(--acc); font-weight:600; }
+  #status { color:var(--mut); font-size:12px; margin-bottom:8px; min-height:16px; }
+  form#add { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:14px; }
+  form#add > input { border-radius:999px; padding:12px 16px; border:2px solid var(--acc); }
+  #more[hidden] { display:none; }
+  #addClose { border:2px solid var(--bad); color:var(--bad); font-weight:600; }
+  .tabs { display:flex; gap:8px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
+  .tabs button { flex:0 0 auto; font-size:14px; padding:6px 12px; border-radius:999px; border:2px solid var(--sc,var(--acc)); color:var(--sc,var(--acc)); font-weight:600; background:transparent; }
+  .tabs button.on { background:var(--sc,var(--acc)); color:#fff; }
+  .tabs button small { opacity:.85; font-weight:700; }
+  .filters { display:flex; background:var(--line); border-radius:999px; padding:3px; margin-bottom:6px; }
+  .filters button { flex:1; border:0; background:transparent; border-radius:999px; font-size:14px; padding:6px 0; color:var(--mut); font-weight:600; }
+  .filters button.on { background:var(--card); color:var(--fg); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .cat { color:var(--mut); font-size:12px; font-weight:700; margin:14px 0 6px 4px; letter-spacing:.08em; }
+  .item { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc,var(--acc)); border-radius:14px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .row { display:flex; align-items:center; gap:12px; }
+  .row .t { flex:1; word-break:break-word; font-weight:600; }
+  .amt { font-size:15px; font-weight:700; white-space:nowrap; text-align:right; } .amt small { display:block; font-weight:600; font-size:11px; color:var(--sc,var(--mut)); }
+  .sub { color:var(--mut); font-size:12px; margin:4px 0 0 36px; } .sub .due { color:var(--due); font-weight:700; }
+  .notes { color:var(--mut); font-size:14px; margin:6px 0 0 36px; white-space:pre-wrap; }
+  .pill { font-size:13px; padding:4px 10px; white-space:nowrap; border-radius:999px; } .pill.on { color:#fff; background:var(--acc); border-color:var(--acc); }
+  .sum { display:flex; justify-content:space-between; font-size:14px; padding:6px 10px; margin-bottom:4px; border-radius:10px; background:var(--card); border-left:6px solid var(--sc); } .sum b { font-weight:700; }
+  .edit > *, .edit .two > *, .three > * { min-width:0; max-width:100%; }
+  .edit { display:grid; gap:8px; margin-top:8px; }
+  .edit select, .edit input, .edit textarea { width:100%; }
+  .edit .two { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+  .three { display:grid; grid-template-columns:4.2em 1fr 1fr; gap:8px; }
+  .edit input[type=number] { padding-left:4px; padding-right:4px; text-align:center; }
+  .edit .btns { display:flex; gap:8px; justify-content:space-between; }
+  #more .btns { display:grid; grid-template-columns:1fr 1fr; } #more .btns button { padding:12px; }
+  input[type=checkbox] { appearance:none; -webkit-appearance:none; width:26px; height:26px; flex:none; padding:0; border-radius:50%; border:2px solid var(--sc,var(--acc)); background:transparent; display:grid; place-content:center; }
+  input[type=checkbox]:checked { background:var(--sc,var(--acc)); } input[type=checkbox]:checked::after { content:"✓"; color:#fff; font-weight:800; }
+  #toast { position:fixed; left:16px; right:16px; bottom:20px; max-width:688px; margin:0 auto; background:var(--fg); color:var(--bg); border-radius:14px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; z-index:9; }
+  #toast[hidden] { display:none; } #toast button { background:transparent; color:var(--bg); border-color:var(--bg); }
+  dialog { border:1px solid var(--line); border-radius:16px; background:var(--card); color:var(--fg); max-width:420px; width:calc(100% - 32px); }
+  dialog label { display:block; margin:8px 0 4px; font-size:14px; } dialog input { width:100%; }
+</style>
+</head>
+<body>
+<main>
+  <div id="hero">
+    <div class="top"><h1>🛒 Buy Items</h1><button id="searchBtn" title="Search" aria-label="Search">🔍</button><button id="refresh" title="Sync now">⟳</button><button id="cfg" title="Settings">⚙</button></div>
+    <div class="tot"><span class="est"></span><span class="n"></span></div>
+  </div>
+  <div id="searchRow" hidden><input id="q" type="search" placeholder="search all items…" autocomplete="off"><button id="qx" aria-label="Close search">✕</button></div>
+  <div id="status"></div>
+  <form id="add">
+    <input name="item" placeholder="New item…" autocomplete="off" required>
+    <div id="more" class="edit" hidden></div>
+  </form>
+  <div class="tabs" id="tabs"></div>
+  <div class="filters" id="filters"></div>
+  <div id="list"></div>
+</main>
+<datalist id="cats"></datalist>
+<div id="toast" hidden><span></span><button id="undo">undo</button></div>
+
+<dialog id="dlg">
+  <form method="dialog" id="cfgForm">
+    <h3>Connect to your sheet</h3>
+    <label>Web app URL</label><input name="url" placeholder="https://script.google.com/macros/s/…/exec">
+    <label>Secret token</label><input name="token" type="password">
+    <p style="text-align:right"><button value="cancel">Cancel</button> <button class="primary" value="ok">Save</button></p>
+  </form>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const STORES = ['Costco', 'HMart', "Trader Joe's", 'NPL/In-store']; // keep in sync with STORES in Code.gs
+const COLORS = { 'Costco': '#1565c0', 'HMart': '#c62828', "Trader Joe's": '#e65100', 'NPL/In-store': '#6a1b9a' }; // per-store accent
+const colorOf = st => COLORS[st] || '#1b7f3b';
+const TYPES = ['staple', 'occasional'];
+const FILTERS = ['List', 'Due', 'Items']; // List = on the list, Due = staples we're probably out of, Items = everything
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const norm = t => ({ category: '', unit: '', notes: '', last_bought: '', times_bought: 0, avg_days: '', ...t, type: t.type || 'staple', qty: Number(t.qty) || 1, need: t.need === true || String(t.need).toLowerCase() === 'true' });
+// storage keys are prefixed because the to-do app is served from the same github.io origin
+let cfg = load('buy_cfg', {}), items = load('buy_items', []).map(norm), queue = load('buy_queue', []);
+let store = 'All', filter = 'List', query = '', editing = null, syncing = false, lastBuy = null, toastTimer;
+
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + Math.random().toString(16).slice(2);
+const today = () => new Date().toLocaleDateString('en-CA');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const money = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
+const setStatus = m => $('#status').textContent = m;
+const lineTotal = t => t.qty * (Number(t.price) || 0);
+const daysAgo = iso => Math.round((Date.parse(today()) - Date.parse(iso)) / 864e5);
+// staple we usually rebuy every avg_days and haven't bought for that long (and that isn't already on the list)
+const isDue = t => t.type === 'staple' && !t.need && t.avg_days && t.last_bought && daysAgo(t.last_bought) >= t.avg_days;
+const inStore = t => store === 'All' || t.store === store;
+
+async function call(body) {
+  const r = await fetch(cfg.url, { method: 'POST', body: JSON.stringify({ token: cfg.token, ...body }) }); // text/plain => no CORS preflight
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'request failed');
+  return j.items;
+}
+
+async function sync() {
+  if (!cfg.url || !cfg.token) { setStatus('Tap ⚙ to connect your sheet.'); return; }
+  if (syncing) return; syncing = true;
+  try {
+    setStatus('Syncing…');
+    let server;
+    while (queue.length) { server = await call(queue[0]); queue.shift(); save('buy_queue', queue); }
+    server = server || await call({ action: 'list' });
+    if (!queue.length) { items = server.map(norm); save('buy_items', items); }
+    setStatus('Synced ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    setStatus((navigator.onLine ? 'Sync error: ' + e.message : 'Offline') + (queue.length ? ` · ${queue.length} change(s) pending` : ''));
+  } finally { syncing = false; render(); }
+}
+
+function send(action) { queue.push(action); save('buy_queue', queue); render(); sync(); }
+function upsert(t) {
+  const i = items.findIndex(x => x.id === t.id);
+  if (i < 0) items.unshift(t); else items[i] = t;
+  save('buy_items', items); send({ action: 'upsert', item: t });
+}
+function del(id) { items = items.filter(t => t.id !== id); save('buy_items', items); send({ action: 'delete', id }); }
+
+// ticking an item on the list = bought it: log the purchase, take it off the list (the sheet recomputes frequency)
+function buy(t) {
+  const log_id = uuid(), date = today();
+  lastBuy = { prev: t, log_id };
+  const times = t.times_bought + 1;
+  items[items.indexOf(t)] = { ...t, need: false, last_bought: date, times_bought: times };
+  save('buy_items', items);
+  toast(`Bought ${t.item}`);
+  send({ action: 'buy', id: t.id, log_id, date, item: t.item, store: t.store, qty: t.qty, price: t.price });
+}
+function undoBuy() {
+  if (!lastBuy) return;
+  const { prev, log_id } = lastBuy; lastBuy = null; $('#toast').hidden = true;
+  items[items.findIndex(x => x.id === prev.id)] = { ...prev, need: true };
+  save('buy_items', items); send({ action: 'unbuy', id: prev.id, log_id });
+}
+function toast(msg) {
+  $('#toast span').textContent = msg; $('#toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; lastBuy = null; }, 6000);
+}
+
+const freqText = t => [t.type,
+  t.avg_days ? `every ~${t.avg_days}d` : '',
+  t.times_bought ? `${t.times_bought}× bought` : 'never bought',
+  t.last_bought ? (daysAgo(t.last_bought) === 0 ? 'last today' : `last ${daysAgo(t.last_bought)}d ago`) : ''].filter(Boolean).join(' · ');
+
+function fieldsHtml(t, withName) {
+  return `${withName ? `<input name="item" value="${esc(t.item)}" required>` : ''}
+    <div class="two"><select name="store">${STORES.map(s => `<option ${s === t.store ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+    <select name="type">${TYPES.map(s => `<option ${s === t.type ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div class="three"><input name="qty" type="number" min="1" step="any" value="${t.qty}" title="Quantity" aria-label="Quantity">
+    <input name="unit" value="${esc(t.unit)}" placeholder="unit (lb, pack)">
+    <input name="price" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(t.price)}" placeholder="price $"></div>
+    <input name="category" list="cats" value="${esc(t.category)}" placeholder="Category (produce, dairy…)">
+    <textarea name="notes" rows="2" placeholder="Notes">${esc(t.notes)}</textarea>`;
+}
+const read = root => Object.fromEntries([...root.querySelectorAll('[name]')].map(e => [e.name, e.value]));
+const fromFields = (f, base) => norm({ ...base, item: f.item.trim() || base.item, store: f.store, type: f.type, qty: f.qty, unit: f.unit.trim(), price: f.price === '' ? '' : +f.price, category: f.category.trim(), notes: f.notes });
+
+function render() {
+  const need = items.filter(t => t.need);
+  const count = s => need.filter(t => s === 'All' || t.store === s).length;
+  $('#tabs').innerHTML = ['All', ...STORES].map(s => `<button data-s="${esc(s)}" style="--sc:${colorOf(s)}" class="${s === store ? 'on' : ''}">${esc(s)}${count(s) ? ` <small>${count(s)}</small>` : ''}</button>`).join('');
+  const dueN = items.filter(t => inStore(t) && isDue(t)).length;
+  $('#filters').innerHTML = FILTERS.map(f => `<button data-f="${f}" class="${f === filter ? 'on' : ''}">${f}${f === 'Due' && dueN ? ' ' + dueN : ''}</button>`).join('');
+  $('#cats').innerHTML = [...new Set(items.map(t => t.category).filter(Boolean))].sort().map(c => `<option value="${esc(c)}">`).join('');
+
+  const shown = items.filter(t => inStore(t) && (query ? (t.item + ' ' + t.category + ' ' + t.notes).toLowerCase().includes(query)
+      : filter === 'List' ? t.need : filter === 'Due' ? isDue(t) : true))
+    .sort((a, b) => (a.category || '~').localeCompare(b.category || '~') || a.item.localeCompare(b.item));
+  const onList = filter === 'List' && !query;
+
+  // bill estimate for what's on the list in the selected store (every store when "All")
+  const mine = need.filter(inStore), total = mine.reduce((s, t) => s + lineTotal(t), 0);
+  $('#hero .est').textContent = money(total);
+  $('#hero .n').textContent = `est. bill · ${mine.length} item${mine.length === 1 ? '' : 's'}${mine.some(t => t.price === '') ? ' · some unpriced' : ''}`;
+
+  let html = '';
+  if (onList && store === 'All') { // per-store breakdown
+    html += STORES.filter(s => count(s)).map(s => { const xs = need.filter(t => t.store === s);
+      return `<div class="sum" style="--sc:${colorOf(s)}"><span>${esc(s)} · ${xs.length}</span><b>${money(xs.reduce((a, t) => a + lineTotal(t), 0))}</b></div>`; }).join('');
+  }
+  let cat = null;
+  html += shown.map(t => {
+    const head = (t.category || '') !== cat ? `<div class="cat">${esc((cat = t.category || '') || 'other').toUpperCase()}</div>` : '';
+    const ed = editing === t.id, due = isDue(t);
+    const lead = onList ? `<input type="checkbox" data-a="buy" title="Bought">`
+      : `<button class="pill ${t.need ? 'on' : ''}" data-a="list">${t.need ? '✓ on list' : '+ list'}</button>`;
+    return head + `<div class="item" data-id="${t.id}" style="--sc:${colorOf(t.store)}"><div class="row">${lead}
+      <span class="t" data-a="edit">${t.qty > 1 ? t.qty + '× ' : ''}${esc(t.item)}${t.unit ? ` <small>(${esc(t.unit)})</small>` : ''}</span>
+      <span class="amt">${t.price === '' ? '—' : money(lineTotal(t))}${store === 'All' ? `<small>${esc(t.store)}</small>` : ''}</span></div>
+      <div class="sub">${due ? '<span class="due">due · </span>' : ''}${esc(freqText(t))}</div>
+      ${t.notes && !ed ? `<div class="notes">${esc(t.notes)}</div>` : ''}
+      ${ed ? `<div class="edit">${fieldsHtml(t, true)}
+        <div class="btns"><button data-a="del">Delete</button><span><button data-a="cancel">Cancel</button> <button class="primary" data-a="save">Save</button></span></div></div>` : ''}
+    </div>`;
+  }).join('');
+  $('#list').innerHTML = html || `<p style="color:var(--mut)">${query ? 'No matches.' : filter === 'List' ? 'Nothing on the list.' : filter === 'Due' ? 'Nothing due yet.' : 'No items.'}</p>`;
+  $('#searchBtn').classList.toggle('on', !!query);
+}
+
+// the add form's extra fields open when the item box is tapped; the store defaults to the selected tab
+const addForm = $('#add'), itemInput = addForm.querySelector('[name=item]'); // not form.elements.item: that is the collection's item() method
+function resetMore() { $('#more').innerHTML = fieldsHtml(norm({ item: '', store: store === 'All' ? STORES[0] : store, price: '' }), false)
+  + '<div class="btns"><button type="button" id="addClose">✕ close</button><button class="primary">add</button></div>'; }
+let skipOpen = false;
+const focusItem = () => { skipOpen = true; itemInput.focus(); skipOpen = false; };
+['focus', 'click'].forEach(ev => itemInput.addEventListener(ev, () => { if (!skipOpen) $('#more').hidden = false; }));
+addForm.addEventListener('click', e => { if (e.target.id === 'addClose') $('#more').hidden = true; });
+addForm.addEventListener('keydown', e => { if (e.key === 'Escape') $('#more').hidden = true; });
+addForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = read(addForm);
+  upsert(fromFields(f, { id: uuid(), need: true, updated_at: new Date().toISOString() })); // a new item goes straight on the list
+  addForm.reset(); resetMore(); $('#more').hidden = true; focusItem();
+});
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { store = b.dataset.s; editing = null; resetMore(); render(); } });
+$('#filters').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { filter = b.dataset.f; editing = null; render(); } });
+$('#list').addEventListener('click', e => {
+  const a = e.target.closest('[data-a]')?.dataset.a, el = e.target.closest('.item'); if (!a || !el) return;
+  const t = items.find(x => x.id === el.dataset.id);
+  if (a === 'buy') buy(t);
+  else if (a === 'list') upsert({ ...t, need: !t.need });
+  else if (a === 'edit') { editing = editing === t.id ? null : t.id; render(); }
+  else if (a === 'cancel') { editing = null; render(); }
+  else if (a === 'del') { if (confirm('Delete this item?')) { editing = null; del(t.id); } }
+  else if (a === 'save') { editing = null; upsert(fromFields(read(el.querySelector('.edit')), t)); }
+});
+$('#undo').onclick = undoBuy;
+function toggleSearch(open) {
+  const row = $('#searchRow'); open = open ?? row.hidden; row.hidden = !open;
+  if (open) $('#q').focus(); else { $('#q').value = ''; query = ''; render(); }
+}
+$('#searchBtn').onclick = () => toggleSearch();
+$('#qx').onclick = () => toggleSearch(false);
+$('#q').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Escape') toggleSearch(false); });
+$('#refresh').onclick = sync;
+$('#cfg').onclick = () => { const f = $('#cfgForm'); f.url.value = cfg.url || ''; f.token.value = cfg.token || ''; $('#dlg').showModal(); };
+$('#dlg').addEventListener('close', () => {
+  if ($('#dlg').returnValue !== 'ok') return;
+  const f = $('#cfgForm'); cfg = { url: f.url.value.trim(), token: f.token.value.trim() }; save('buy_cfg', cfg); sync();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !editing) sync(); });
+window.addEventListener('online', sync);
+setInterval(() => { if (!document.hidden && !editing) sync(); }, 30000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+resetMore(); render(); sync();
+</script>
+</body>
+</html>
