@@ -32,7 +32,7 @@
   form#add > input { border-radius:999px; padding:12px 16px; border:2px solid var(--acc); }
   #more[hidden] { display:none; }
   label.keep { display:flex; flex-wrap:wrap; align-items:center; gap:2px 10px; font-size:15px; } label.keep small { flex-basis:100%; margin-left:36px; color:var(--mut); }
-  #sugg { list-style:none; margin:-2px 4px 0; padding:0; display:grid; gap:6px; } #sugg[hidden] { display:none; }
+  #sugg { list-style:none; width:72%; max-width:340px; margin:-2px auto 0; padding:0; display:grid; gap:6px; } /* centred, so the sides stay free for scrolling */ #sugg[hidden] { display:none; }
   #sugg li { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc); border-radius:12px; padding:8px 12px; cursor:pointer; touch-action:pan-y; }
   #sugg .t { flex:1; font-weight:600; word-break:break-word; } #sugg small { color:var(--mut); } #sugg .amt { font-size:14px; }
   #sugg .badge { font-size:11px; font-weight:700; color:#fff; background:var(--acc); border-radius:999px; padding:1px 8px; }
@@ -261,9 +261,8 @@ function matches(q) {
   return items.filter(t => t.item.toLowerCase().includes(q))
     .sort((a, b) => (store !== 'All' && (b.store === store) - (a.store === store)) || (b.item.toLowerCase().startsWith(q) - a.item.toLowerCase().startsWith(q)) || a.item.localeCompare(b.item)).slice(0, 4);
 }
-let suggY = 0; // scroll position when the list was last shown
 function showSugg() {
-  const ms = matches(itemInput.value); suggY = scrollY;
+  const ms = matches(itemInput.value);
   $('#sugg').hidden = !ms.length;
   $('#sugg').innerHTML = ms.map(t => `<li data-id="${t.id}" style="--sc:${colorOf(t.store)}"><span class="t">${esc(t.item)}${t.need ? ' <span class="badge">on list</span>' : ''}<br><small>${esc(t.store)}${t.category ? ' · ' + esc(t.category) : ''}</small></span><span class="amt">${t.price === '' ? '—' : money(t.price)}</span></li>`).join('');
 }
@@ -282,8 +281,6 @@ $('#sugg').addEventListener('click', e => {
   const it = items.find(x => x.id === li.dataset.id); if (!it) return;
   itemInput.value = it.item; resetMore(it); $('#sugg').hidden = true; $('#more').hidden = false; // fill the form with its saved details
 });
-// scrolling the page moves the list out of the way until the next keystroke
-addEventListener('scroll', () => { if (!$('#sugg').hidden && Math.abs(scrollY - suggY) > 10) $('#sugg').hidden = true; }, { passive: true });
 addForm.addEventListener('submit', e => {
   e.preventDefault();
   const f = read(addForm);
