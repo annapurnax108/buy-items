@@ -46,6 +46,7 @@
   .filters button.on { background:var(--card); color:var(--fg); box-shadow:0 1px 3px rgba(0,0,0,.2); }
   .cat { color:var(--mut); font-size:12px; font-weight:700; margin:14px 0 6px 4px; letter-spacing:.08em; }
   .item { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--sc,var(--acc)); border-radius:14px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .item.editing { border-left:1px solid var(--line); --sc:var(--acc); } /* no store-colour stripe while the details are open */
   .row { display:flex; align-items:center; gap:12px; }
   .row .t { flex:1; word-break:break-word; font-weight:600; }
   .amt { font-size:15px; font-weight:700; white-space:nowrap; text-align:right; } .amt small { display:block; font-weight:600; font-size:11px; color:var(--sc,var(--mut)); }
@@ -226,7 +227,7 @@ function render() {
     const ed = editing === t.id, due = isDue(t);
     const lead = onList ? `<input type="checkbox" data-a="buy" title="Bought">`
       : `<button class="pill ${t.need ? 'on' : ''}" data-a="list">${t.need ? '✓ on list' : '+ list'}</button>`;
-    return head + `<div class="item" data-id="${t.id}" style="--sc:${colorOf(t.store)}"><div class="row">${lead}
+    return head + `<div class="item${ed ? ' editing' : ''}" data-id="${t.id}"${ed ? '' : ` style="--sc:${colorOf(t.store)}"`}><div class="row">${lead}
       <span class="t" data-a="edit">${t.qty > 1 ? t.qty + '× ' : ''}${esc(t.item)}${t.unit ? ` <small>(${esc(t.unit)})</small>` : ''}</span>
       <span class="amt">${t.price === '' ? '—' : money(lineTotal(t))}${store === 'All' ? `<small>${esc(t.store)}</small>` : ''}</span></div>
       <div class="sub">${due ? '<span class="due">due · </span>' : ''}${esc(freqText(t))}</div>
